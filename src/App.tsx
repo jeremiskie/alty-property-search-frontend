@@ -12,7 +12,54 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Component para kusa mag-recenter ang mapa kapag may napiling property
+// Custom Icon Generator with Built-in Text Label below the Icon
+const createLandmarkLabelIcon = (emoji: string, name: string, distKm: number, color: string) => {
+  return L.divIcon({
+    className: 'custom-landmark-label-pin',
+    html: `
+      <div style="display: flex; flex-direction: column; align-items: center; width: 140px; transform: translateX(-50%);">
+        <!-- ICON BUBBLE -->
+        <div style="
+          background-color: ${color};
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+          z-index: 2;
+        ">${emoji}</div>
+        
+        <!-- TEXT LABEL BELOW ICON -->
+        <div style="
+          background: rgba(15, 23, 42, 0.85);
+          color: white;
+          padding: 3px 7px;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: bold;
+          text-align: center;
+          margin-top: 2px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.2);
+          white-space: nowrap;
+          max-width: 130px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">
+          <div>${name}</div>
+          <div style="color: #f97316; font-size: 9px;">📍 ${distKm} km</div>
+        </div>
+      </div>
+    `,
+    iconSize: [0, 0],
+    iconAnchor: [0, 16],
+  });
+};
+
 function RecenterMap({ center }: { center: LatLngTuple }) {
   const map = useMap();
   useEffect(() => {
@@ -21,7 +68,17 @@ function RecenterMap({ center }: { center: LatLngTuple }) {
   return null;
 }
 
-// --- DUMMY PROPERTY DATABASE ---
+interface Landmark {
+  id: string;
+  type: string;
+  emoji: string;
+  name: string;
+  distKm: number;
+  coords: LatLngTuple;
+  color: string;
+}
+
+// --- DUMMY PROPERTY DATABASE WITH SPECIFIC LANDMARK NAMES ---
 const PROPERTIES_DATABASE = [
   {
     id: "LOT-1001",
@@ -31,7 +88,6 @@ const PROPERTIES_DATABASE = [
     status: "For Sale",
     agent: "Bacoor Realty Partners",
     centerCoords: [14.4506, 120.9828] as LatLngTuple,
-    // [Lat, Lng] coordinates ng Polygon Boundary
     boundaryPolygon: [
       [14.4515, 120.9815],
       [14.4515, 120.9825],
@@ -42,17 +98,17 @@ const PROPERTIES_DATABASE = [
       [14.4515, 120.9815],
       [14.4515, 120.9825],
     ] as LatLngTuple[],
-    proximity: {
-      hospital: "Bacoor Doctors Med Center (0.8 km)",
-      market: "Zapote Public Market (1.2 km)",
-      mall: "SM City Bacoor (0.5 km)",
-      park: "Cavite City Hall Park (2.5 km)",
-      worksite: "Mataasnakahoy Tech Park (1.8 km)"
-    }
+    landmarks: [
+      { id: "h1", type: "Hospital", emoji: "🏥", name: "St. Michael Hospital", distKm: 0.8, coords: [14.4550, 120.9850], color: "#ef4444" },
+      { id: "m1", type: "Market", emoji: "🛒", name: "Zapote Public Market", distKm: 1.2, coords: [14.4580, 120.9780], color: "#eab308" },
+      { id: "s1", type: "Mall", emoji: "🛍️", name: "SM City Bacoor", distKm: 0.5, coords: [14.4480, 120.9840], color: "#ec4899" },
+      { id: "c1", type: "City Hall", emoji: "🏛️", name: "City of Bacoor Hall", distKm: 2.1, coords: [14.4400, 120.9750], color: "#8b5cf6" },
+      { id: "w1", type: "Worksite", emoji: "🏢", name: "Mataasnakahoy Tech Park", distKm: 1.8, coords: [14.4600, 120.9900], color: "#3b82f6" },
+    ] as Landmark[]
   },
   {
     id: "LOT-1002",
-    name: "Molino Commercial Boulevard Lot",
+    name: "Molino Commercial Lot",
     address: "Molino Blvd, Bacoor, Cavite",
     pricePhp: 22000000,
     status: "Under Offer",
@@ -68,31 +124,34 @@ const PROPERTIES_DATABASE = [
       [14.4310, 120.9940],
       [14.4310, 120.9960],
     ] as LatLngTuple[],
-    proximity: {
-      hospital: "Prime Global Hospital (1.5 km)",
-      market: "Molino Wet Market (0.9 km)",
-      mall: "Vistamall Molino (0.4 km)",
-      park: "Tirona Park (3.0 km)",
-      worksite: "Cavite EcoZone (4.5 km)"
-    }
+    landmarks: [
+      { id: "h2", type: "Hospital", emoji: "🏥", name: "Metro South Medical Center", distKm: 1.5, coords: [14.4350, 120.9980], color: "#ef4444" },
+      { id: "m2", type: "Market", emoji: "🛒", name: "Molino Wet Market", distKm: 0.9, coords: [14.4270, 120.9910], color: "#eab308" },
+      { id: "s2", type: "Mall", emoji: "🛍️", name: "SM Southmall", distKm: 3.4, coords: [14.4320, 120.9960], color: "#ec4899" },
+      { id: "p2", type: "Park", emoji: "🌳", name: "Molino Ecological Park", distKm: 1.2, coords: [14.4200, 120.9850], color: "#22c55e" },
+    ] as Landmark[]
   }
 ];
 
 export default function App() {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  
-  // State para sa napiling Property mula sa database
   const [selectedPropId, setSelectedPropId] = useState<string>(PROPERTIES_DATABASE[0].id);
   const currentProperty = PROPERTIES_DATABASE.find(p => p.id === selectedPropId) || PROPERTIES_DATABASE[0];
 
-  // State para sa Routing papunta sa Property
+  const [mapTargetCoords, setMapTargetCoords] = useState<LatLngTuple>(currentProperty.centerCoords);
+
+  // Routing States
   const [originAddress, setOriginAddress] = useState('Manila City Hall');
-  const [originCoords, setOriginCoords] = useState<LatLngTuple>([14.5896, 120.9817]); // Default Manila
+  const [originCoords, setOriginCoords] = useState<LatLngTuple>([14.5896, 120.9817]);
   const [routePolyline, setRoutePolyline] = useState<LatLngTuple[]>([]);
   const [routeMetrics, setRouteMetrics] = useState({ distanceKm: '0', durationMin: 0 });
   const [loadingRoute, setLoadingRoute] = useState(false);
 
-  // Helper: Geocode User Input Address
+  useEffect(() => {
+    setMapTargetCoords(currentProperty.centerCoords);
+    calculateRouteToProperty(originCoords);
+  }, [selectedPropId]);
+
   const geocodeAddress = async (address: string): Promise<LatLngTuple> => {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
     const data = await res.json();
@@ -102,7 +161,6 @@ export default function App() {
     throw new Error(`Address not found: ${address}`);
   };
 
-  // Handler: Calculate Route at Byahe Time papunta sa Napiling Property
   const calculateRouteToProperty = async (startCoords: LatLngTuple) => {
     setLoadingRoute(true);
     try {
@@ -128,7 +186,6 @@ export default function App() {
     }
   };
 
-  // Trigger Routing kapag nagbago ang Napiling Property o Origin Address
   const handleSearchRoute = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -140,15 +197,9 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    calculateRouteToProperty(originCoords);
-  }, [selectedPropId]);
-
-  // Turf.js Calculations para sa Polygon Area at Frontage Length
   const calculateGeoMetrics = () => {
-    // Turf expects coordinates in [Lng, Lat] format
     const turfBoundary = currentProperty.boundaryPolygon.map((pt) => [pt[1], pt[0]]);
-    turfBoundary.push(turfBoundary[0]); // Close polygon
+    turfBoundary.push(turfBoundary[0]);
     const poly = turf.polygon([turfBoundary]);
     const areaSqm = turf.area(poly);
 
@@ -167,21 +218,20 @@ export default function App() {
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* Badge styling sa mapa */}
       <style>{`
         .custom-property-badge {
           background-color: #f97316 !important;
           color: #ffffff !important;
           border: 2px solid #ea580c !important;
           border-radius: 8px !important;
-          padding: 8px 12px !important;
+          padding: 6px 10px !important;
           font-weight: bold !important;
-          font-size: 13px !important;
+          font-size: 12px !important;
           box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
         }
       `}</style>
 
-      {/* --- COLLAPSIBLE FLOATING UI CONTAINER --- */}
+      {/* --- COLLAPSIBLE UI PANEL --- */}
       <div style={{
         position: 'absolute',
         top: '15px',
@@ -198,7 +248,7 @@ export default function App() {
         transition: 'all 0.3s ease-in-out'
       }}>
         
-        {/* HEADER BAR WITH HIDE/SHOW BUTTON */}
+        {/* HEADER */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -209,31 +259,21 @@ export default function App() {
           borderRadius: isCollapsed ? '16px' : '16px 16px 0 0'
         }}>
           <div>
-            <h4 style={{ margin: 0, fontSize: '15px' }}>🏢 Real Estate Property Viewer</h4>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Select listing & check trip details</span>
+            <h4 style={{ margin: 0, fontSize: '15px' }}>🏢 Property & Landmark Navigator</h4>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>View nearby places & distance</span>
           </div>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            style={{
-              border: 'none',
-              backgroundColor: '#334155',
-              color: 'white',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}
+            style={{ border: 'none', backgroundColor: '#334155', color: 'white', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
           >
             {isCollapsed ? 'Show Controls ▼' : 'Hide Controls ▲'}
           </button>
         </div>
 
-        {/* CONTAINER CONTENT */}
         {!isCollapsed && (
           <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             
-            {/* 1. SELECTOR NG PROPERTY DUMMY DATA */}
+            {/* 1. SELECT PROPERTY */}
             <div>
               <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569' }}>SELECT PROPERTY LISTING:</label>
               <select
@@ -247,7 +287,7 @@ export default function App() {
               </select>
             </div>
 
-            {/* 2. PRICE & KEY PROPERTY DETAILS */}
+            {/* 2. PRICE & METRICS */}
             <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, color: '#16a34a' }}>₱{currentProperty.pricePhp.toLocaleString()}</h3>
@@ -255,74 +295,88 @@ export default function App() {
                   {currentProperty.status}
                 </span>
               </div>
-              <p style={{ margin: '4px 0 8px 0', fontSize: '12px', color: '#64748b' }}>{currentProperty.address}</p>
-              
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: 'center', marginTop: '8px' }}>
-                <div style={{ backgroundColor: '#fff7ed', padding: '8px', borderRadius: '8px', border: '1px solid #ffedd5' }}>
-                  <span style={{ fontSize: '10px', color: '#c2410c' }}>TOTAL LOT AREA</span>
-                  <div style={{ fontWeight: 'bold', color: '#ea580c', fontSize: '14px' }}>{geoMetrics.area} sqm</div>
+                <div style={{ backgroundColor: '#fff7ed', padding: '6px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '10px', color: '#c2410c' }}>AREA</span>
+                  <div style={{ fontWeight: 'bold', color: '#ea580c' }}>{geoMetrics.area} sqm</div>
                 </div>
-                <div style={{ backgroundColor: '#fff7ed', padding: '8px', borderRadius: '8px', border: '1px solid #ffedd5' }}>
-                  <span style={{ fontSize: '10px', color: '#c2410c' }}>FRONTAGE WIDTH</span>
-                  <div style={{ fontWeight: 'bold', color: '#ea580c', fontSize: '14px' }}>{geoMetrics.frontage} meters</div>
+                <div style={{ backgroundColor: '#fff7ed', padding: '6px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '10px', color: '#c2410c' }}>FRONTAGE</span>
+                  <div style={{ fontWeight: 'bold', color: '#ea580c' }}>{geoMetrics.frontage} m</div>
                 </div>
               </div>
             </div>
 
-            {/* 3. TRIP ROUTE CALCULATOR (ORIGIN TO PROPERTY) */}
-            <form onSubmit={handleSearchRoute} style={{ backgroundColor: '#eff6ff', padding: '12px', borderRadius: '10px', border: '1px solid #dbeafe' }}>
+            {/* 3. ROUTE FROM USER LOCATION */}
+            <form onSubmit={handleSearchRoute} style={{ backgroundColor: '#eff6ff', padding: '10px', borderRadius: '10px', border: '1px solid #dbeafe' }}>
               <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e40af' }}>CALCULATE TRIP FROM YOUR LOCATION:</label>
               <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                 <input
                   type="text"
                   value={originAddress}
                   onChange={(e) => setOriginAddress(e.target.value)}
-                  placeholder="Enter starting location..."
-                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #93c5fd', fontSize: '12px' }}
+                  style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #93c5fd', fontSize: '12px' }}
                 />
                 <button type="submit" style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
                   {loadingRoute ? '...' : 'Route'}
                 </button>
               </div>
-
-              {/* ROUTING RESULTS */}
-              <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '10px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '8px', textAlign: 'center' }}>
                 <div>
-                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1d4ed8' }}>{routeMetrics.distanceKm} km</div>
-                  <div style={{ fontSize: '10px', color: '#3b82f6' }}>Actual Road Distance</div>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1d4ed8' }}>{routeMetrics.distanceKm} km</span>
+                  <div style={{ fontSize: '10px', color: '#3b82f6' }}>Distance</div>
                 </div>
-                <div style={{ borderLeft: '1px solid #bfdbfe', paddingLeft: '12px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#047857' }}>{routeMetrics.durationMin} mins</div>
+                <div>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#047857' }}>{routeMetrics.durationMin} mins</span>
                   <div style={{ fontSize: '10px', color: '#10b981' }}>Est. Travel Time</div>
                 </div>
               </div>
             </form>
 
-            {/* 4. PROXIMITY TO LANDMARKS */}
-            <div style={{ fontSize: '11px', color: '#334155' }}>
-              <strong style={{ color: '#0f172a' }}>📍 Nearby Landmarks / Establishments:</strong>
-              <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <li>🏥 <b>Hospital:</b> {currentProperty.proximity.hospital}</li>
-                <li>🛒 <b>Market:</b> {currentProperty.proximity.market}</li>
-                <li>🛍️ <b>Mall:</b> {currentProperty.proximity.mall}</li>
-                <li>🌳 <b>Park:</b> {currentProperty.proximity.park}</li>
-                <li>🏢 <b>Worksite:</b> {currentProperty.proximity.worksite}</li>
-              </ul>
-            </div>
-
-            <div style={{ fontSize: '10px', color: '#94a3b8', textAlign: 'right' }}>
-              Listing Agent: <b>{currentProperty.agent}</b>
+            {/* 4. INTERACTIVE NEARBY LANDMARKS LIST */}
+            <div>
+              <strong style={{ fontSize: '12px', color: '#0f172a' }}>📍 Nearby Establishments (Click to focus):</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                {currentProperty.landmarks.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setMapTargetCoords(item.coords)}
+                    style={{
+                      display: 'flex',
+                      justify: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f1f5f9',
+                      cursor: 'pointer',
+                      borderLeft: `4px solid ${item.color}`,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>{item.emoji}</span>
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>{item.name}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>{item.type}</div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>{item.distKm} km</span>
+                      <div style={{ fontSize: '9px', color: '#94a3b8' }}>from lot</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
           </div>
         )}
       </div>
 
-      {/* --- LEAFLET SATELLITE MAP CONTAINER --- */}
-      <MapContainer center={currentProperty.centerCoords} zoom={16} style={{ height: '100%', width: '100%' }}>
-        <RecenterMap center={currentProperty.centerCoords} />
+      {/* --- SATELLITE MAP CONTAINER --- */}
+      <MapContainer center={mapTargetCoords} zoom={15} style={{ height: '100%', width: '100%' }}>
+        <RecenterMap center={mapTargetCoords} />
 
-        {/* ArcGIS World Imagery (Satellite Tiles) */}
         <TileLayer
           attribution="&copy; Esri, Maxar, Earthstar Geographics"
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -333,12 +387,12 @@ export default function App() {
           <Popup>Origin Location: {originAddress}</Popup>
         </Marker>
 
-        {/* BLUE ROUTE LINE */}
+        {/* ROUTE LINE */}
         {routePolyline.length > 0 && (
           <Polyline positions={routePolyline} color="#2563eb" weight={5} opacity={0.8} />
         )}
 
-        {/* RED PROPERTY POLYGON BOUNDARY */}
+        {/* PROPERTY POLYGON */}
         <Polygon
           positions={currentProperty.boundaryPolygon}
           pathOptions={{ color: '#ef4444', weight: 4, fillColor: '#ef4444', fillOpacity: 0.2 }}
@@ -347,16 +401,33 @@ export default function App() {
             <div>
               <div>{currentProperty.name}</div>
               <div>Area: {geoMetrics.area} sqm</div>
-              <div>Frontage: {geoMetrics.frontage} m</div>
             </div>
           </Tooltip>
         </Polygon>
 
-        {/* ORANGE FRONTAGE LINE */}
-        <Polyline
-          positions={currentProperty.frontageLine}
-          pathOptions={{ color: '#f97316', weight: 6, dashArray: '6, 8' }}
-        />
+        {/* FRONTAGE LINE */}
+        <Polyline positions={currentProperty.frontageLine} pathOptions={{ color: '#f97316', weight: 6, dashArray: '6, 8' }} />
+
+        {/* --- LANDMARK PINS WITH PERMANENT TEXT LABELS BELOW --- */}
+        {currentProperty.landmarks.map((lm) => (
+          <Marker
+            key={lm.id}
+            position={lm.coords}
+            icon={createLandmarkLabelIcon(lm.emoji, lm.name, lm.distKm, lm.color)}
+          >
+            <Popup>
+              <div style={{ textAlign: 'center', padding: '4px' }}>
+                <div style={{ fontSize: '20px' }}>{lm.emoji}</div>
+                <strong style={{ fontSize: '13px' }}>{lm.name}</strong>
+                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>Type: {lm.type}</div>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ea580c', marginTop: '4px' }}>
+                  📍 {lm.distKm} km from property
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
       </MapContainer>
     </div>
   );
